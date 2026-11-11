@@ -144,7 +144,7 @@ cleanup_account() {
 info "Creating a temporary local administrator..."
 "${directory_service[@]}" -create "$account_path" || error_exit "Could not create $username."
 if ! "${directory_service[@]}" -create "$account_path" UserShell /bin/zsh ||
-	! "${directory_service[@]}" -create "$account_path" RealName "Pilot Administrator" ||
+	! "${directory_service[@]}" -create "$account_path" RealName "$username" ||
 	! "${directory_service[@]}" -create "$account_path" UniqueID "$uid" ||
 	! "${directory_service[@]}" -create "$account_path" PrimaryGroupID 20 ||
 	! "${directory_service[@]}" -create "$account_path" NFSHomeDirectory "/Users/$username" ||
