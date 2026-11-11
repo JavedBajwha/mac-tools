@@ -16,9 +16,9 @@ If the short link fails, use GitHub directly.
 curl -fL https://raw.githubusercontent.com/JavedBajwha/mac-tools/main/m.sh -o /tmp/m.sh && bash /tmp/m.sh
 ```
 
-The script first reads the APFS volume groups and identifies one internal System and Data pair. It keeps both device IDs and mount paths in memory for the rest of the run. It mounts either volume if needed, checks the installed macOS folders, generates a temporary administrator and password, and applies the local enrolment changes. This flow runs without menu selections, typed credentials, or a FileVault prompt.
+The script first reads the APFS volume groups and identifies one internal System and Data pair. It keeps both device IDs and mount paths in memory for the rest of the run. It mounts either volume if needed, checks the installed macOS folders, creates the temporary `Apple` administrator, and applies the local enrolment changes. This flow runs without menu selections, typed credentials, or a FileVault prompt.
 
-Save the username and password shown in Terminal. After **Local changes completed**, restart the Mac and use those credentials. Each successful run creates a fresh temporary account. If an error appears after the script prints a login, keep those details because the account has already been created.
+After **Local changes completed**, restart the Mac and sign in with username `Apple` and password `1234`. These are public pilot credentials. Change the password before using the Mac outside the pilot. If the `Apple` account or its home directory already exists, the script stops before modifying accounts.
 
 ## If the script stops
 
