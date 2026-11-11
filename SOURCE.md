@@ -8,4 +8,4 @@
 - Copied: 2026-11-11
 - Licence: MIT; see LICENSE.
 
-This copy has not been run or verified on Mac hardware. The local changes extract volume names using Bash instead of `basename` and attempt to mount a matching internal APFS volume group when the installed volumes are unavailable. The script uses the detected Data mount path directly and stops before the menu if detection fails. It makes local account and enrollment changes; it does not release a device from Apple Business Manager.
+The local version selects a matching internal APFS System and Data pair before applying changes, mounts missing volumes, and keeps the device identifiers and mount paths in memory. It generates a temporary administrator and uses the paired Data volume for writable settings. The automated workflow has been tested with simulated Recovery commands and still needs a live hardware test.
