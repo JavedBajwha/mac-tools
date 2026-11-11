@@ -91,7 +91,7 @@ discover_volumes() {
 }
 
 # Resolve the installation once and keep its device IDs and paths for this run.
-for command in diskutil plutil dscl od tr grep mkdir chmod chown touch rm rmdir; do
+for command in diskutil plutil dscl grep mkdir chmod chown touch rm rmdir; do
 	command -v "$command" >/dev/null 2>&1 || error_exit "Recovery command unavailable: $command"
 done
 
@@ -122,13 +122,10 @@ while grep -Eq "[[:space:]]$uid[[:space:]]*$" <<< "$accounts"; do
 	[ "$uid" -lt 600 ] || error_exit "No available local user ID from 501 through 599."
 done
 
-random_hex=$(od -An -N 24 -tx1 /dev/urandom | tr -d '[:space:]')
-[[ "$random_hex" =~ ^[0-9a-f]{48}$ ]] || error_exit "Could not generate secure administrator credentials."
-username="pilot_${random_hex:0:12}"
-password="${random_hex:12}"
-unset random_hex
-if grep -Eiq "^$username[[:space:]]" <<< "$accounts" || [ -e "$data_path/Users/$username" ] || [ -L "$data_path/Users/$username" ]; then
-	error_exit "Generated administrator name is already in use. Run again to generate a new name."
+username="Apple"
+password="1234"
+if grep -Eiq "^[[:space:]]*$username[[:space:]]" <<< "$accounts" || [ -e "$data_path/Users/$username" ] || [ -L "$data_path/Users/$username" ]; then
+	error_exit "The Apple account or its home directory already exists. No account changes were made."
 fi
 
 account_path="/Local/Default/Users/$username"
