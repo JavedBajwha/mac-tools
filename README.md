@@ -4,7 +4,7 @@
 
 ## Download and run
 
-1. Boot into macOS Recovery, connect to the internet and open **Utilities → Terminal**. On an Intel Mac, such as the MacBook Pro A2251, hold **Command + R** at startup. An existing macOS installation must be present. If its Data volume is locked, mount and unlock it in Disk Utility first.
+1. Boot into macOS Recovery, connect to the internet and open **Utilities → Terminal**. On an Intel Mac, such as the MacBook Pro A2251, hold **Command + R** at startup. An existing macOS installation must be present.
 
 2. Download the script to Recovery’s temporary folder.
 
@@ -24,7 +24,7 @@
    bash /tmp/m.sh
    ```
 
-4. Check that the menu shows the correct **System Volume** and **Data Volume**. If either is incorrect, press **Control + C** and check the troubleshooting steps below.
+4. If the volumes are unmounted, the script looks for a single internal APFS System and Data pair and attempts to mount it. Enter your FileVault password if macOS prompts for it. Check that the menu shows the correct **System Volume** and **Data Volume**. If either is incorrect, press **Control + C** and check the troubleshooting steps below.
 
 5. Choose **1 — Bypass MDM from Recovery**. Enter a unique temporary administrator username and a strong password. The script can display the password on screen. Check the output for failed writes or account errors before restarting.
 
@@ -32,7 +32,7 @@
 
 On the MacBook Pro A2251, Recovery could see and mount both macOS volumes, but the original script reported **“Could not detect system volume”** because Recovery lacked `basename`. The updated script reads the volume names using Bash itself. If an old download still shows `basename: command not found`, download `m.sh` again using the command above.
 
-If the updated script cannot detect a System or Data volume, it exits before showing the menu. Check the volumes below.
+If the mounted volumes are unavailable, the script checks APFS volume groups and tries to mount a matching internal pair. It stops before showing the menu if it cannot find a unique pair, unlock the Data volume, or verify the required folders. The checks below help diagnose those cases.
 
 ### If the volumes are missing, locked or unmounted
 
