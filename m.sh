@@ -121,7 +121,7 @@ detect_volumes() {
 	# List all volumes and look for system volume (ends with or contains common names)
 	for vol in /Volumes/*; do
 		if [ -d "$vol" ]; then
-			vol_name=$(basename "$vol")
+			vol_name=${vol##*/}
 
 			# Check if this looks like a system volume (not Data, not recovery)
 			if [[ ! "$vol_name" =~ "Data"$ ]] && [[ ! "$vol_name" =~ "Recovery" ]] && [ -d "$vol/System" ]; then
@@ -136,7 +136,7 @@ detect_volumes() {
 	if [ -z "$system_vol" ]; then
 		for vol in /Volumes/*; do
 			if [ -d "$vol/System" ]; then
-				system_vol=$(basename "$vol")
+				system_vol=${vol##*/}
 				warn "Using volume with /System directory: $system_vol" >&2
 				break
 			fi
@@ -154,7 +154,7 @@ detect_volumes() {
 		# Look for any volume ending with "Data"
 		for vol in /Volumes/*Data; do
 			if [ -d "$vol" ]; then
-				data_vol=$(basename "$vol")
+				data_vol=${vol##*/}
 				warn "Found data volume: $data_vol" >&2
 				break
 			fi
@@ -174,9 +174,9 @@ detect_volumes() {
 }
 
 # Detect volumes at startup
-volume_info=$(detect_volumes)
-system_volume=$(echo "$volume_info" | cut -d'|' -f1)
-data_volume=$(echo "$volume_info" | cut -d'|' -f2)
+volume_info=$(detect_volumes) || exit 1
+system_volume="${volume_info%%|*}"
+data_volume="${volume_info#*|}"
 
 # Display header
 echo ""
