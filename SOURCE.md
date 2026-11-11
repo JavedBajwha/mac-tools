@@ -8,4 +8,4 @@
 - Copied: 2026-11-11
 - Licence: MIT; see LICENSE.
 
-The local version selects a matching internal APFS System and Data pair before applying changes, mounts missing volumes, and keeps the device identifiers and mount paths in memory. It generates a temporary administrator and uses the paired Data volume for writable settings. The automated workflow has been tested with simulated Recovery commands and still needs a live hardware test.
+The local version selects a matching internal APFS System and Data pair before applying changes, mounts missing volumes, and keeps the device identifiers and mount paths in memory. It creates a temporary administrator using the fixed pilot credentials documented in the README and uses the paired Data volume for writable settings. The automated workflow has been tested with simulated Recovery commands and still needs a live hardware test.
