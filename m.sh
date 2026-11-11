@@ -173,10 +173,107 @@ detect_volumes() {
 	echo "$system_vol|$data_vol"
 }
 
-# Detect volumes at startup
-volume_info=$(detect_volumes) || exit 1
-system_volume="${volume_info%%|*}"
-data_volume="${volume_info#*|}"
+# Read a scalar from diskutil's property list output.
+plist_value() {
+	printf '%s' "$1" | plutil -extract "$2" raw -o - - 2>/dev/null
+}
+
+mount_recovery_volume() {
+	local device="$1"
+	local role="$2"
+	local info_plist mount_point
+
+	info_plist=$(diskutil info -plist "$device") || return 1
+	mount_point=$(plist_value "$info_plist" MountPoint)
+	if [ -z "$mount_point" ]; then
+		info "Mounting $device..." >&2
+		if ! diskutil mount "$device" >&2; then
+			[ "$role" = "Data" ] || return 1
+			info "If the Data volume is locked, enter its FileVault password when prompted." >&2
+			diskutil apfs unlockVolume "$device" </dev/tty >&2 || return 1
+		fi
+		info_plist=$(diskutil info -plist "$device") || return 1
+		mount_point=$(plist_value "$info_plist" MountPoint)
+	fi
+
+	case "$mount_point" in
+		/Volumes/*) [ -d "$mount_point" ] || return 1 ;;
+		*) return 1 ;;
+	esac
+	printf '%s\n' "$mount_point"
+}
+
+recover_unmounted_volumes() {
+	local listing container group volume role device disk_info
+	local system_id data_id target_system="" target_data="" system_mount data_mount
+
+	listing=$(diskutil apfs listVolumeGroups -plist) ||
+		error_exit "Could not read APFS volume groups. Check the internal drive in Disk Utility."
+	container=0
+	while plist_value "$listing" "Containers.$container.ContainerReference" >/dev/null; do
+		group=0
+		while plist_value "$listing" "Containers.$container.VolumeGroups.$group.APFSVolumeGroupUUID" >/dev/null; do
+			volume=0
+			system_id=""
+			data_id=""
+			while device=$(plist_value "$listing" "Containers.$container.VolumeGroups.$group.Volumes.$volume.DeviceIdentifier"); do
+				[[ "$device" =~ ^disk[0-9]+s[0-9]+$ ]] ||
+					error_exit "Unexpected APFS device identifier: $device"
+				role=$(plist_value "$listing" "Containers.$container.VolumeGroups.$group.Volumes.$volume.Role") ||
+					error_exit "Could not read the APFS role for $device."
+				case "$role" in
+					System) system_id="$device" ;;
+					Data) data_id="$device" ;;
+				esac
+				volume=$((volume + 1))
+			done
+			if [ -n "$system_id" ] && [ -n "$data_id" ]; then
+				disk_info=$(diskutil info -plist "$system_id") ||
+					error_exit "Could not inspect APFS System volume $system_id."
+				if [ "$(plist_value "$disk_info" Internal)" = "true" ]; then
+					[ -z "$target_system" ] ||
+						error_exit "Multiple internal macOS installations found. Check the intended pair in Disk Utility."
+					target_system="$system_id"
+					target_data="$data_id"
+				fi
+			fi
+			group=$((group + 1))
+		done
+		container=$((container + 1))
+	done
+
+	[ -n "$target_system" ] ||
+		error_exit "Could not find one internal APFS System/Data pair. Check the drive and macOS installation in Disk Utility."
+
+	system_mount=$(mount_recovery_volume "$target_system" System) ||
+		error_exit "Could not mount System volume $target_system."
+	data_mount=$(mount_recovery_volume "$target_data" Data) ||
+		error_exit "Could not mount or unlock Data volume $target_data."
+
+	[ -d "$system_mount/System" ] ||
+		error_exit "The System folder is missing from $system_mount."
+	[ -d "$data_mount/private/var/db/dslocal/nodes/Default" ] ||
+		error_exit "The local account database is missing from $data_mount."
+
+	printf '%s|%s\n' "$system_mount" "$data_mount"
+}
+
+# Try the mounted volumes first, then use APFS metadata to recover missing mounts.
+system_path=""
+data_path=""
+if volume_info=$(detect_volumes 2>/dev/null); then
+	system_path="/Volumes/${volume_info%%|*}"
+	data_path="/Volumes/${volume_info#*|}"
+fi
+if [ -z "$system_path" ] || [ ! -d "$system_path/System" ] ||
+	[ ! -d "$data_path/private/var/db/dslocal/nodes/Default" ]; then
+	info "Checking APFS volume groups for missing mounts..."
+	volume_info=$(recover_unmounted_volumes) || exit 1
+	system_path="${volume_info%%|*}"
+	data_path="${volume_info#*|}"
+fi
+system_volume="${system_path##*/}"
+data_volume="${data_path##*/}"
 
 # Display header
 echo ""
@@ -200,38 +297,7 @@ select opt in "${options[@]}"; do
 		echo -e "${YEL}═══════════════════════════════════════${NC}"
 		echo ""
 
-		# Normalize data volume name if needed
-		if [ "$data_volume" != "Data" ]; then
-			info "Renaming data volume to 'Data' for consistency..."
-			if diskutil rename "$data_volume" "Data" 2>/dev/null; then
-				success "Data volume renamed successfully"
-				data_volume="Data"
-			else
-				warn "Could not rename data volume, continuing with: $data_volume"
-			fi
-		fi
-
-		# Validate critical paths
-		info "Validating system paths..."
-
-		system_path="/Volumes/$system_volume"
-		data_path="/Volumes/$data_volume"
-
-		if [ ! -d "$system_path" ]; then
-			error_exit "System volume path does not exist: $system_path"
-		fi
-
-		if [ ! -d "$data_path" ]; then
-			error_exit "Data volume path does not exist: $data_path"
-		fi
-
 		dscl_path="$data_path/private/var/db/dslocal/nodes/Default"
-		if [ ! -d "$dscl_path" ]; then
-			error_exit "Directory Services path does not exist: $dscl_path"
-		fi
-
-		success "All system paths validated"
-		echo ""
 
 		# Create Temporary User
 		echo -e "${CYAN}Creating Temporary Admin User${NC}"
